@@ -1,19 +1,19 @@
 package main
 
 import (
-	"encoding/csv"
 	"encoding/xml"
 	"fmt"
 	"log"
 	"os"
-	"strings"
-	"time"
 	"ynab4importer/internal/TB"
 	"ynab4importer/internal/ynab4"
 )
 
 func main() {
-	data, err := os.ReadFile("download.ofx")
+	inputFileName := getInputFileName(os.Args)
+	outputFileName := getOutputFileName(os.Args)
+
+	data, err := os.ReadFile(inputFileName)
 	if err != nil {
 		log.Fatalln("Error reading file:", err)
 		return
@@ -26,71 +26,21 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Bank ID: %s\n", ofx.Stmt.BankAcctFrom.BankID)
-	fmt.Printf("Acc  ID: %s\n", ofx.Stmt.BankAcctFrom.AcctID)
-	fmt.Printf("Transactions #: %d\n", len(ofx.Stmt.BankTransList.StmtTrns))
+	fmt.Printf("Writing %d transactions.\n", len(ofx.Stmt.BankTransList.StmtTrns))
 
-	writeCsvFile(ofx)
+	ynab4.WriteCsvFile(ofx, outputFileName)
 }
 
-func writeCsvFile(ofx TB.OFX) {
-	csvFile, err := os.Create("output.csv")
-	if err != nil {
-		log.Fatal("Error creating CSV file:", err)
+func getInputFileName(args []string) string {
+	if len(args) > 1 {
+		return args[1]
 	}
-	defer csvFile.Close()
-
-	writer := csv.NewWriter(csvFile)
-
-	// write header row
-	fmt.Println("Date,Payee,Category,Memo,Outflow,Inflow")
-	header := []string{"Date", "Payee", "Category", "Memo", "Outflow", "Inflow"}
-	writer.Write(header)
-
-	// write each STMTTRN row
-	for _, trn := range ofx.Stmt.BankTransList.StmtTrns {
-
-		memo := parseName(trn.Name)
-		outflow, inflow := assignFlow(trn.TrnType, trn.TrnAmt)
-		date, _ := formatDate(trn.DtAvail)
-		category := ynab4.ParseCategory(memo)
-		payee := ynab4.ParsePayee(memo)
-
-		// line like: 31/01/2023,,,"DM Vienna Gate, BA",32.35,
-		outLine := fmt.Sprintf(`%s,%s,"%s","%s",%s,%s`, date, payee, category, memo, outflow, inflow)
-		fmt.Println(outLine)
-		row := []string{date, payee, category, memo, outflow, inflow}
-		writer.Write(row)
-	}
-
-	writer.Flush()
+	return "download.ofx"
 }
 
-func parseName(input string) string {
-	if parts := strings.Split(input, "EUR "); len(parts) > 1 {
-		return parts[1]
-	} else if parts := strings.Split(input, "HUF "); len(parts) > 1 {
-		return parts[1]
-	} else if parts := strings.Split(input, "CZK "); len(parts) > 1 {
-		return parts[1]
-	} else {
-		return parts[0]
+func getOutputFileName(args []string) string {
+	if len(args) > 2 {
+		return args[2]
 	}
-}
-
-func assignFlow(trnType string, trnAmt string) (outflow string, inflow string) {
-	if trnType == "DEBIT" {
-		outflow = trnAmt
-	} else if trnType == "CREDIT" {
-		inflow = trnAmt
-	}
-	return outflow, inflow
-}
-
-func formatDate(dateStr string) (string, error) {
-	date, err := time.Parse("20060102", dateStr)
-	if err != nil {
-		return "", err
-	}
-	return date.Format("02/01/2006"), nil
+	return "output.csv"
 }
