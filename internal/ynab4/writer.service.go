@@ -10,6 +10,8 @@ import (
 	"ynab4importer/internal/TB"
 )
 
+const logFormaltLine = "|%-10s|%-16s|%-35s|%-30s|%6s|%6s|\n"
+
 func WriteCsvFile(ofx TB.OFX, fileName string) {
 	csvFile, err := os.Create(fileName)
 	if err != nil {
@@ -20,8 +22,8 @@ func WriteCsvFile(ofx TB.OFX, fileName string) {
 	writer := csv.NewWriter(csvFile)
 
 	// write header row
-	fmt.Println("Date,Payee,Category,Memo,Outflow,Inflow")
-	header := []string{"Date", "Payee", "Category", "Memo", "Outflow", "Inflow"}
+	header := []string{"  Date", " Payee", "  Category", "   Memo", "Out ", "In "}
+	fmt.Printf(logFormaltLine, header[0], header[1], header[2], header[3], header[4], header[5])
 	writer.Write(header)
 
 	// write each STMTTRN row
@@ -45,6 +47,7 @@ func writeCsvRow(writer *csv.Writer, trn TB.StmtTrn) error {
 	}
 
 	row := []string{date, payee, category, memo, outflow, inflow}
+	fmt.Printf(logFormaltLine, date, payee, category, memo, outflow, inflow)
 	if err := writer.Write(row); err != nil {
 		return err
 	}

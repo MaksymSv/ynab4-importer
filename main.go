@@ -13,6 +13,9 @@ func main() {
 	inputFileName := getInputFileName(os.Args)
 	outputFileName := getOutputFileName(os.Args)
 
+	log.Printf("Processing file - %s", inputFileName)
+	log.Printf("Out file - %s", outputFileName)
+
 	data, err := os.ReadFile(inputFileName)
 	if err != nil {
 		log.Fatalln("Error reading file:", err)
